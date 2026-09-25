@@ -1,5 +1,6 @@
 const userModel = require('../models/user.model.js')
 const jwt = require('jsonwebtoken')
+const sendRegistrationEmail = require('../services/email.service.js');
 /**
  * 
  * POST /api/auth/register
@@ -18,17 +19,24 @@ async function registerUser(req,res){
         })
     }
 
-    const user = userModel.create({
+    const user = await userModel.create({
         email,password,name
     })
+
+    // Send welcome email before responding (fire-and-forget with logging)
+    try {
+        await sendRegistrationEmail(user.email, user.name);
+    } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+    }
+
     const token = jwt.sign({userId:user._id},process.env.JWT_SECRET,{expiresIn:"3d"});
     res.cookie("token",token);
     res.status(201).json({
         user:{
-            _id:User._id,
-            email:User.email,
-            name:User.name,
-
+            _id:user._id,
+            email:user.email,
+            name:user.name,
         },
         token
     });
